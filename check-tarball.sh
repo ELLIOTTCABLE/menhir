@@ -40,6 +40,7 @@ fi
 TEMPDIR=`mktemp -d /tmp/menhir-test.XXXXXX`
 INSTALL=$TEMPDIR/install
 COQCONTRIB=$INSTALL/coq-contrib
+DUNE=dune
 
 cp $TARBALL $TEMPDIR
 
@@ -49,20 +50,15 @@ echo "   * Extracting. "
 echo "   * Compiling and installing."
 mkdir $INSTALL
 (cd $TEMPDIR/$PACKAGE &&
-  make PREFIX=$INSTALL USE_OCAMLFIND=true &&
-  make PREFIX=$INSTALL USE_OCAMLFIND=true install &&
+  $DUNE build @install &&
+  $DUNE install --prefix=$INSTALL menhir &&
   make -C coq-menhirlib all &&
   make -C coq-menhirlib CONTRIB=$COQCONTRIB install
 ) > $TEMPDIR/install.log 2>&1 || (cat $TEMPDIR/install.log; exit 1)
 
-echo "   * Building the demos."
-(cd $TEMPDIR/$PACKAGE &&
-  make MENHIR=$INSTALL/bin/menhir COQINCLUDES="-R $COQCONTRIB/MenhirLib MenhirLib" -C demos
-) > $TEMPDIR/demos.log 2>&1 || (cat $TEMPDIR/demos.log; exit 1)
-
 echo "   * Uninstalling."
 (cd $TEMPDIR/$PACKAGE &&
-  make PREFIX=$INSTALL USE_OCAMLFIND=true uninstall
+  $DUNE uninstall --prefix=$INSTALL menhir
   make -C coq-menhirlib CONTRIB=$COQCONTRIB uninstall
 ) > $TEMPDIR/uninstall.log 2>&1 || (cat $TEMPDIR/uninstall.log; exit 1)
 

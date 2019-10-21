@@ -8,6 +8,9 @@ SHELL := bash
 # Prevent the built-in bash cd from displaying information.
 export CDPATH=
 
+DUNE      := dune
+DUNEBUILD := $(DUNE) build
+
 # -------------------------------------------------------------------------
 
 # A dummy entry.
@@ -20,10 +23,6 @@ all:
 
 # Testing.
 
-# This assumes that [make -C src everyday bootstrap] has been run
-# (or that MENHIR is set and points to a Menhir executable that
-# one wishes to test).
-
 .PHONY: test
 test:
 	$(MAKE) -C test
@@ -34,9 +33,10 @@ test:
 
 .PHONY: clean
 clean:
-	@ for i in test demos src quicktest doc ; do \
+	@ for i in demos doc ; do \
 	  $(MAKE) -C $$i $@ ; \
 	done
+	$(DUNE) clean
 
 # -------------------------------------------------------------------------
 
@@ -56,14 +56,14 @@ TARBALL  := $(CURRENT)/$(PACKAGE).tar.gz
 # The names of the modules in MenhirLib are obtained by reading the
 # non-comment lines in menhirLib.mlpack.
 
-MENHIRLIB_MODULES := $(shell grep -ve "^[ \t\n\r]*\#" src/menhirLib.mlpack)
+MENHIRLIB_MODULES := $(shell grep -ve "^[ \t\n\r]*\#" src/lib/pack/menhirLib.mlpack)
 
 # The names of the source files in MenhirLib are obtained by adding
 # an .ml or .mli extension to the module name. (We assume that the
 # first letter of the file name is a capital letter.)
 
 MENHIRLIB_FILES   := $(shell for m in $(MENHIRLIB_MODULES) ; do \
-	                       ls src/$$m.{ml,mli} 2>/dev/null ; \
+	                       ls src/lib/$$m.{ml,mli} 2>/dev/null ; \
 	                     done)
 
 # -------------------------------------------------------------------------
@@ -117,8 +117,7 @@ DOC     := doc/manual.pdf doc/manual.html doc/manual*.png
 RELEASE := releases/$(DATE)
 WWW     := www
 
-# Prior to making a release, one should run [make test],
-# then [make pin] and [make -C demos].
+# Prior to making a release, one should run [make test] then [make pin].
 
 .PHONY: release
 release:
@@ -139,31 +138,17 @@ release:
 # Create a fresh git branch and switch to it.
 	@ echo "Preparing a release commit on a fresh release branch..."
 	@ git checkout -b $(BRANCH)
-# In src/_tags, remove every line tagged "my_warnings".
-	@ cd src && grep -v my_warnings _tags > _tags.new && mv _tags.new _tags
-	@ git add src/_tags
-# The file src/installation.ml is not under version control, so won't be
-# included in the archive. We nevertheless remove it, for a clean test
-# build below.
-	@ rm -f src/installation.ml
 # Remove subdirectories that do not need to (or must not) be distributed.
-	@ make --quiet -C test clean
-	@ make --quiet -C quicktest clean
 	@ make --quiet -C coq-menhirlib clean
-	@ git rm -rf attic headers quicktest releases src/attic test --quiet
+	@ git rm -rf attic headers quicktest demos releases src/attic test --quiet
 # Remove files that do not need to (or must not) be distributed.
 # Keep check-tarball.sh because it is used below.
 	@ git rm GNUmakefile HOWTO.md TODO* *.opam coq-menhirlib/descr --quiet
 # Hardcode the version number in the files that mention it. These
 # include version.ml, StaticVersion.{ml,mli}, version.tex, META.
-	@ echo let version = \"$(DATE)\" > src/version.ml
-	@ git add src/version.ml
-	@ echo version = \"$(DATE)\" >> src/menhirLib.META
-	@ echo version = \"$(DATE)\" >> src/menhirSdk.META
-	@ git add src/menhirLib.META src/menhirSdk.META
-	@ echo "let require_$(DATE) = ()" > src/StaticVersion.ml
-	@ echo "val require_$(DATE) : unit" > src/StaticVersion.mli
-	@ git add src/StaticVersion.ml src/StaticVersion.mli
+	@ sed -i.bak 's/unreleased/$(DATE)/' dune-project
+	@ rm -f dune-project.bak
+	@ git add dune-project
 	@ echo '\gdef\menhirversion{$(DATE)}' > doc/version.tex
 	@ git add doc/version.tex
 	@ echo 'Definition require_$(DATE) := tt.' >> coq-menhirlib/src/Version.v
@@ -173,6 +158,8 @@ release:
 	@ make --quiet -C doc clean >/dev/null
 	@ make --quiet -C doc all   >/dev/null
 	@ git add -f $(DOC)
+	@ echo '(include dune.manual)' >> doc/dune
+	@ git add doc/dune
 # Commit.
 	@ echo "Committing..."
 	@ git commit -m "Release $(DATE)." --quiet
