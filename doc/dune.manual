@@ -1,0 +1,5 @@
+(install
+ (section doc)
+ (files manual.pdf
+        manual.html manual001.png manual002.png manual003.png)
+ (package menhir))
