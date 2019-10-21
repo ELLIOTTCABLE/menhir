@@ -10,12 +10,11 @@ For the moment, there is not much information in it.
 There are two ways of recompiling Menhir after making a change in the sources.
 
 To perform a single compilation pass, just go down into the `src` directory
-and type `make`. This produces an executable file named `_stage1/menhir.native`.
+and type `make`. This produces an executable file named `_build/install/default/bin/menhir`.
 
 To go further and check that Menhir can process its own grammar,
 still in the `src` directory,
 type `make bootstrap`.
-This produces an executable file named `_stage2/menhir.native`.
 
 `make bootstrap` occasionally fails for no good reason. In that case,
 use `make clean` before attempting `make bootstrap` again.

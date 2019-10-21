@@ -2,7 +2,7 @@
 
 ## Requirements
 
-You need OCaml 4.02 or later, ocamlbuild, and GNU make.
+You need OCaml 4.02 or later, dune 2.0 or later, and GNU make.
 
 ## Configuration Choices
 
@@ -21,27 +21,13 @@ to the following places:
 
 `PREFIX` must be set when invoking `make all` and `make install` (see below).
 
-### `USE_OCAMLFIND`
-
-The support libraries, `MenhirLib` and `MenhirSdk`, are installed either via
-ocamlfind or directly in the directory `$PREFIX/share/menhir`. Installing via
-ocamlfind is recommended (and is the default). It requires the `ocamlfind`
-executable to be found in the `PATH`. An explicit choice can be made by setting
-`USE_OCAMLFIND` to `true` or `false` when running `make all` (see below).
-
-### `TARGET`
-
-If your machine does not have the native code OCaml compiler (`ocamlopt`), but
-does have the bytecode compiler (`ocamlc`), then you should define `TARGET=byte`
-when running `make all` and `make install`.
-
 ## Compilation and Installation
 
 Compile and install as follows:
 
 ```
-       make -f Makefile PREFIX=/usr/local USE_OCAMLFIND=true all
+       make -f Makefile PREFIX=/usr/local all
   sudo make -f Makefile PREFIX=/usr/local install
 ```
 
-If necessary, adjust `PREFIX`, `USE_OCAMLFIND` and `TARGET` as described above.
+If necessary, adjust `PREFIX` as described above.
