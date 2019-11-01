@@ -407,27 +407,17 @@ let () =
       ()
   | SuggestCompFlags ->
       if !table then
-        if Installation.ocamlfind then
-          printf "-package menhirLib\n%!"
-        else
-          printf "-I %s\n%!" Installation.libdir;
+        printf "-I %s\n%!" Installation.libdir;
       exit 0
   | SuggestLinkFlags extension ->
       if !table then
-        if Installation.ocamlfind then
-          printf "-linkpkg\n%!"
-        else
-          printf "menhirLib.%s\n%!" extension;
+        printf "menhirLib.%s\n%!" extension;
       exit 0
   | SuggestWhereIsMenhirLibSource ->
-      if Installation.ocamlfind then
-        let _ = Sys.command "ocamlfind query menhirLib" in
-        ()
-      else
-        printf "%s\n%!" Installation.libdir;
+      printf "%s\n%!" Installation.libdir;
       exit 0
   | SuggestUseOcamlfind ->
-      printf "%b\n" Installation.ocamlfind;
+      printf "false\n";
       exit 0
 
 (* ------------------------------------------------------------------------- *)

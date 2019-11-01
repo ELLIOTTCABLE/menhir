@@ -17,9 +17,3 @@
 (* The directory where Menhir's libraries are installed. *)
 
 val libdir: string
-
-(* Whether MenhirLib was installed via [ocamlfind] or (manually)
-   in the above directory. *)
-
-val ocamlfind: bool
-
