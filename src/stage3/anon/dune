@@ -1,0 +1,3 @@
+(executable
+ (name anon)
+ (libraries str))
