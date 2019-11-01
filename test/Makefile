@@ -1,9 +1,4 @@
-.PHONY: test expected clean
+.PHONY: test expected
 
 test expected:
 	$(MAKE) -C src $@
-
-clean:
-	$(MAKE) -C src $@
-	$(MAKE) -C good $@
-	$(MAKE) -C bad $@

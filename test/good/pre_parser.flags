@@ -1,1 +1,3 @@
---no-stdlib -la 1
+--no-stdlib
+-la
+1

@@ -1,19 +1,19 @@
-OCAMLBUILD := ocamlbuild -use-ocamlfind -classic-display
-TARGET     := test.byte
+DUNEBUILD := dune build --no-print-directory
 
-.PHONY: all test expected clean
+.PHONY: all test expected
 
 all:
-	$(OCAMLBUILD) $(TARGET)
+	@ $(DUNEBUILD)
 
-test: all
-	$(MAKE) -C ../../src bootstrap
-	./$(TARGET) --verbosity 1
+test:
+	@ $(DUNEBUILD) --display short @test
 
-expected: all
-	$(MAKE) -C ../../src bootstrap
-	./$(TARGET) --verbosity 1 --create-expected
+expected:
+	@ $(DUNEBUILD) @test --auto-promote
 
-clean:
-	rm -f *~ *.native *.byte
-	$(OCAMLBUILD) -clean
+gen:
+	@ echo > dune.inc
+	@ $(DUNEBUILD) @gen --auto-promote || :
+
+list:
+	@ $(DUNEBUILD) --force --no-buffer @list

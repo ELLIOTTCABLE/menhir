@@ -13,9 +13,6 @@ open Auxiliary
 
 (* Settings. *)
 
-let create_expected =
-  ref false
-
 let extra =
   ref ""
 
@@ -26,8 +23,6 @@ let usage =
   sprintf "Usage: %s\n" argv.(0)
 
 let spec = Arg.align [
-  "--create-expected", Arg.Set create_expected,
-                       " recreate the expected-output files";
   "--extra-flags",     Arg.String (fun flags -> extra := flags),
                        "<string> specify extra flags for Menhir";
   "--verbosity",       Arg.Int ((:=) verbosity),
@@ -37,9 +32,6 @@ let spec = Arg.align [
 let () =
   Arg.parse spec (fun _ -> ()) usage
 
-let create_expected =
-  !create_expected
-
 let extra =
   !extra
 
@@ -48,63 +40,19 @@ let verbosity =
 
 (* -------------------------------------------------------------------------- *)
 
-(* Logging. *)
-
-(* 0 is minimal verbosity;
-   1 shows some progress messages;
-   2 is maximal verbosity. *)
-
-let log level format =
-  kprintf (fun s ->
-    if level <= verbosity then
-      print_string s
-  ) format
-
-(* Extend [fail] to display an information message along the way.
-   The message is immediately emitted by the worker, depending on
-   the verbosity level, whereas the failure message is sent back
-   to the master. *)
-
-let fail id format =
-  log 1 "[FAIL] %s\n%!" id;
-  fail format
-
-(* When issuing an external command, log it along the way. *)
-
-let command cmd =
-  log 2 "%s\n%!" cmd;
-  command cmd
-
-(* -------------------------------------------------------------------------- *)
-
 (* Paths. *)
 
-let root =
-  (* Move up to the root of the Menhir repository. *)
-  absolute_directory "../.."
-
-let src =
-  root ^ "/src"
-
 let good =
-  root ^ "/test/good"
+  "../good"
 
 let good_slash filename =
   good ^ "/" ^ filename
 
 let bad =
-  root ^ "/test/bad"
+  "../bad"
 
 let bad_slash filename =
   bad ^ "/" ^ filename
-
-(* We use the stage 2 executable (i.e., Menhir compiled by Menhir)
-   because it has better syntax error messages and we want to test
-   them. *)
-(* The standard library is the one in [src], viewed from [test/bad]
-   or [test/good], so we use the relative path [../../src]. *)
-let menhir =
-  src ^ "/_stage2/menhir.native --stdlib ../../src"
 
 (* -------------------------------------------------------------------------- *)
 
@@ -136,55 +84,21 @@ type input =
 
 type inputs = input list
 
-let print_input = function
-  | NegativeTest basenames ->
-      id basenames
-  | PositiveTest basenames ->
-      id basenames
-
-type outcome =
-  | OK
-  | Fail of string (* message *)
-
-let print_outcome = function
-  | OK ->
-      ""
-  | Fail msg ->
-      msg
-
-type output =
-  input * outcome
-
-type outputs = output list
-
-let print_output (input, outcome) =
-  printf "\n[FAIL] %s\n%s"
-    (print_input input)
-    (print_outcome outcome)
-
 (* -------------------------------------------------------------------------- *)
 
-(* Auxiliary functions. *)
+type sexp =
+  | A of string
+  | L of sexp list
 
-let check_expected directory id result expected =
-  let cmd = sep ["cd"; directory; "&&"; "cp"; "-f"; result; expected] in
-  let copy() =
-    if command cmd <> 0 then
-      fail id "Failed to create %s.\n" expected
-  in
-  (* If we are supposed to create the [expected] file, do so. *)
-  if create_expected then
-    copy()
-  (* Otherwise, check that the file [expected] exists. If it does not exist,
-     create it by renaming [result] to [expected], then fail and invite the
-     user to review the newly created file. *)
-  else if not (file_exists (directory ^ "/" ^ expected)) then begin
-    copy();
-    let cmd = sep ["more"; directory ^ "/" ^ expected] in
-    fail id "The file %s did not exist.\n\
-             I have just created it. Please review it.\n%s\n"
-      expected cmd
-  end
+let rec print_sexp ppf = function
+  | A s ->
+      Format.pp_print_string ppf s
+  | L l ->
+      Format.fprintf ppf "@[<1>(%a)@]"
+        (Format.pp_print_list ~pp_sep:Format.pp_print_space print_sexp) l
+
+let print_sexp sexp =
+  Format.printf "@[<v>%a@,@]" print_sexp sexp
 
 (* -------------------------------------------------------------------------- *)
 
@@ -194,41 +108,39 @@ let process_negative_test basenames : unit =
 
   (* Display an information message. *)
   let id = id basenames in
-  log 2 "Testing %s...\n%!" id;
 
   (* A --base option is needed for groups of several files. *)
-  let base = if length basenames > 1 then sprintf "--base %s" id else "" in
+  let base = if length basenames > 1 then [A"--base"; A id] else [] in
 
-  (* The output is stored in this file. *)
+  (* The output is stored in this file.*)
   let result = id ^ ".result" in
 
   (* Flags. *)
   let flags = id ^ ".flags" in
   let flags =
-    if file_exists (bad_slash flags) then sprintf "`cat %s`" flags else ""
+    let extra = if extra = "" then [] else [A extra] in
+    if file_exists (bad_slash flags) then A(sprintf "%%{read-lines:%s}" (bad_slash flags)) :: extra else extra
   in
 
   (* Run Menhir in the directory bad/. *)
-  let cmd = sep (
-    "cd" :: bad :: "&&" ::
-    menhir :: base :: flags :: extra :: mlys basenames @ sprintf ">%s" result :: "2>&1" :: []
-  ) in
-  if command cmd = 0 then
-    fail id "menhir should not accept %s.\n" (thisfile basenames);
+  print_sexp
+    (L[A"rule";
+       L[A"target"; A result];
+       L(A"deps" :: List.map (fun mly -> A(bad_slash mly)) (mlys basenames));
+       L[A"action";
+         L[A"with-outputs-to"; A "%{target}";
+           L[A"chdir"; A bad;
+             L[A"with-accepted-exit-codes"; L[A"not"; A"0"];
+               L(A"run" :: A"menhir" :: base @ flags @ [A"%{deps}"])]]]]]);
 
   (* Check that the file [expected] exists. *)
   let expected = id ^ ".expected" in
-  check_expected bad id result expected;
 
   (* Check that the output coincides with what was expected. *)
-  let cmd = sep ("cd" :: bad :: "&&" :: "diff" :: expected :: result :: []) in
-  if command (silent cmd) <> 0 then
-    fail id "menhir correctly rejects %s, with incorrect output.\n(%s)\n"
-      (thisfile basenames)
-      cmd;
-
-  (* Succeed. *)
-  log 1 "[OK] %s\n%!" id
+  print_sexp
+    (L[A"rule";
+       L[A"alias"; A id];
+       L[A"action"; L[A"diff"; A(bad_slash expected); A result]]])
 
 (* -------------------------------------------------------------------------- *)
 
@@ -247,92 +159,82 @@ let process_positive_test basenames : unit =
 
   (* Display an information message. *)
   let id = id basenames in
-  log 2 "Testing %s...\n%!" id;
 
   (* A --base option is needed for groups of several files. *)
-  let base = if length basenames > 1 then sprintf "--base %s" id else "" in
+  let base = if length basenames > 1 then [A"--base"; A id] else [] in
 
   (* Flags. *)
   let flags = id ^ ".flags" in
   let flags =
-    if file_exists (good_slash flags) then sprintf "`cat %s`" flags else ""
+    let extra = if extra = "" then [] else [A extra] in
+    if file_exists (good_slash flags) then A(sprintf "%%{read-lines:%s}" (good_slash flags)) :: extra else extra
   in
 
   (* Run menhir --only-preprocess. *)
   let oppout = id ^ ".opp.out" in
-  let cmd = sep (
-    "cd" :: good :: "&&" ::
-    menhir :: "--only-preprocess" :: base :: flags :: extra
-           :: mlys basenames @ sprintf ">%s" oppout :: "2>&1" :: []
-  ) in
-  if command cmd <> 0 then begin
-    let cmd = sep ["more"; good_slash oppout] in
-    fail id "menhir rejects %s.\n%s\n" (thisfile basenames) cmd
-  end;
+  print_sexp
+    (L[A"rule";
+       L[A"target"; A oppout];
+       L(A"deps" :: List.map (fun mly -> A(good_slash mly)) (mlys basenames));
+       L[A"action";
+         L[A"with-outputs-to"; A"%{target}";
+           L[A"chdir"; A good;
+             L(A"run" :: A"menhir" :: A"--only-preprocess" :: base @ flags @ [A"%{deps}"])]]]]);
 
   (* Check that the file [oppexp] exists. *)
   let oppexp = id ^ ".opp.exp" in
-  check_expected good id oppout oppexp;
 
   (* Check that the output coincides with what was expected. *)
-  let cmd = sep ("cd" :: good :: "&&" :: "diff" :: oppexp :: oppout :: []) in
-  if command (silent cmd) <> 0 then
-    fail id "menhir --only-preprocess accepts %s,\nbut produces incorrect output.\n(%s)\n"
-      (thisfile basenames)
-      cmd;
+  print_sexp
+    (L[A"rule";
+       L[A"alias"; A id];
+       L[A"action";
+         L[A"diff"; A(good_slash oppexp); A oppout]]]);
 
   (* Run menhir. *)
   let out = id ^ ".out" in
-  let cmd = sep (
-    "cd" :: good :: "&&" ::
-    menhir :: base :: flags :: extra :: "--explain -lg 2 -la 2 -lc 2"
-           :: mlys basenames @ sprintf ">%s" out :: "2>&1" :: []
-  ) in
-  if command cmd <> 0 then begin
-    let cmd = sep ["more"; good_slash out] in
-    fail id "menhir fails on %s.\n%s\n" (thisfile basenames) cmd
-  end;
+  print_sexp
+    (L[A"rule";
+       L[A"target"; A out];
+       L(A"deps" :: List.map (fun mly -> A(good_slash mly)) (mlys basenames));
+       L[A"action";
+         L[A"with-outputs-to"; A"%{target}";
+           L[A"chdir"; A good;
+             L(A"run" :: A"menhir" :: base @ flags @ [A"--explain"; A"-lg"; A"2"; A"-la"; A"2"; A"-lc"; A"2"; A"%{deps}"])]]]]);
 
   (* Check that the file [exp] exists. *)
   let exp = id ^ ".exp" in
-  check_expected good id out exp;
 
   (* Check that the output coincides with what was expected. *)
-  let cmd = sep ("cd" :: good :: "&&" :: "diff" :: exp :: out :: []) in
-  if command (silent cmd) <> 0 then
-    fail id "menhir --explain accepts %s,\nbut produces incorrect output.\n(%s)\n"
-      (thisfile basenames)
-      cmd;
-
-  (* Succeed. *)
-  log 1 "[OK] %s\n%!" id
+  print_sexp
+    (L[A"rule";
+       L[A"alias"; A id];
+       L[A"action";
+         L[A"diff"; A(good_slash exp); A out]]])
 
 (* -------------------------------------------------------------------------- *)
 
 (* Running a test. *)
 
-let process input : output =
-  try
-    begin match input with
-    | NegativeTest basenames ->
-        process_negative_test basenames
-    | PositiveTest basenames ->
-        process_positive_test basenames
-    end;
-    input, OK
-  with Failure msg ->
-    input, Fail msg
+let process input =
+  match input with
+  | NegativeTest basenames ->
+      process_negative_test basenames
+  | PositiveTest basenames ->
+      process_positive_test basenames
 
 (* -------------------------------------------------------------------------- *)
 
 (* [run] runs a bunch of tests in parallel. *)
 
-let run (inputs : inputs) : outputs =
-  Functory.Cores.set_number_of_cores (get_number_of_cores ());
-  (* Functory.Control.set_debug true; *)
-  flush stdout; flush stderr;
-  let outputs = Functory.Cores.map ~f:process inputs in
-  outputs
+let run (inputs : inputs) =
+  List.iter process inputs;
+  let ids = List.map (function NegativeTest basenames | PositiveTest basenames -> id basenames) inputs in
+  let ids = List.sort_uniq compare ids in
+  print_sexp
+    (L[A"alias";
+       L[A"name"; A"test"];
+       L(A"deps" :: List.map (fun id -> L[A"alias"; A id]) ids)])
 
 (* -------------------------------------------------------------------------- *)
 
@@ -361,18 +263,5 @@ let negative : inputs =
 let inputs =
   positive @ negative
 
-let outputs : outputs =
-  printf "Preparing to run %d tests...\n%!" (length inputs);
-  run inputs
-
-let successful, failed =
-  partition (fun (_, o) -> o = OK) outputs
-
 let () =
-  let successful = length successful
-  and inputs = length inputs in
-  printf "%d out of %d tests are successful.\n" successful inputs;
-  failed |> iter (fun (input, outcome) ->
-    printf "\n[FAIL] %s\n%s" (print_input input) (print_outcome outcome)
-  );
-  exit (if successful = inputs then 0 else 1)
+  run inputs

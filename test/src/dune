@@ -1,0 +1,32 @@
+(executable
+ (name test)
+ (libraries str))
+
+(alias
+ (name default)
+ (deps test.exe))
+
+;; -----------------------------------------------------------------------------
+
+;; We generate a dune file for good/bad tests.
+
+(rule
+ (target dune.inc.gen)
+ (deps (source_tree ../bad) (source_tree ../good))
+ (action (with-stdout-to %{target} (run ./test.exe))))
+
+(include dune.inc)
+
+;; When adding/removing a test from the good/bad subdirectories,
+;; the generated file needs to be rebuilt and promoted.
+
+(rule
+ (alias gen)
+ (action (diff dune.inc dune.inc.gen)))
+
+;; -----------------------------------------------------------------------------
+
+(rule
+ (alias list)
+ (deps (source_tree ../good))
+ (action (chdir ../good (run %{make} -f Makefile.test list))))
