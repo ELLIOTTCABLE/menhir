@@ -1,0 +1,13 @@
+(alias
+ (name default))
+
+(rule
+ (alias test)
+ (deps test.sh
+       ocamlyacc/calc.exe
+       menhir_code/calc.exe
+       menhir_code_inline/calc.exe
+       menhir_table/calc.exe
+       menhir_table_inline/calc.exe
+       (glob_files *.in))
+ (action (run bash test.sh)))

@@ -1,0 +1,10 @@
+(copy_files# ../{calc,aux}.ml)
+(copy_files# ../lexer.mll)
+
+(ocamllex lexer)
+
+(rule (copy ../parser-menhir.mly parser.mly))
+
+(menhir
+ (flags -v --fixed-exception (:include menhir_flags))
+ (modules parser))

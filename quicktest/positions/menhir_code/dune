@@ -1,0 +1,9 @@
+;; Menhir, code back-end, %inline disabled.
+
+(include ../dune.menhir)
+
+(rule (with-stdout-to menhir_flags
+                      (echo "(-lc 1 --comment --no-code-inlining --no-inline)")))
+
+(executable
+ (name calc))

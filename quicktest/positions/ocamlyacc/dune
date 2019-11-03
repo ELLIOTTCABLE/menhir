@@ -1,0 +1,11 @@
+(copy_files# ../{calc,aux}.ml)
+(copy_files# ../lexer.mll)
+
+(ocamllex lexer)
+
+(rule (copy ../parser-ocamlyacc.mly parser.mly))
+
+(ocamlyacc parser)
+
+(executable
+ (name calc))

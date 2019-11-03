@@ -1,0 +1,10 @@
+;; Menhir, table back-end, %inline enabled.
+
+(include ../dune.menhir)
+
+(rule (with-stdout-to menhir_flags
+                      (echo "(--table)")))
+
+(executable
+ (name calc)
+ (libraries menhirLib))
