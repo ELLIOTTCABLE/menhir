@@ -1,23 +1,9 @@
-.PHONY: all clean test
+.PHONY: all test
 
-DUNE       := dune
-EXECUTABLE := calc.exe
+DUNEBUILD := dune build --no-print-directory
 
 all:
-	@ if command -v $(DUNE) > /dev/null ; then \
-	  $(DUNE) build $(EXECUTABLE) ; \
-	else \
-	  echo "Error: $(DUNE) is required." ; \
-	fi
+	@ $(DUNEBUILD) @all
 
-clean:
-	rm -rf `cat .gitignore`
-	rm -f *~
-
-test: all
-	@echo "The following command should print 42:"
-	echo "(1 + 2 * 10) * 2" | ./_build/default/$(EXECUTABLE)
-	@echo "The following command should print an error message:"
-	echo "(1 + 2 * 10) * )" | ./_build/default/$(EXECUTABLE)
-	@echo "The following command should print an error message:"
-	echo "(1 + 2 * 10))" | ./_build/default/$(EXECUTABLE)
+test:
+	@ $(DUNEBUILD) --force @test
