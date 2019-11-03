@@ -29,3 +29,19 @@
 (executable
   (name calc)
 )
+
+(rule
+ (with-stdout-to algebraic.out
+                 (with-stdin-from algebraic.in (run ./calc.exe --algebraic))))
+
+(rule
+ (alias test)
+ (action (diff calc.exp algebraic.out)))
+
+(rule
+ (with-stdout-to reverse.out
+                 (with-stdin-from reverse.in (run ./calc.exe --reverse))))
+
+(rule
+ (alias test)
+ (action (diff calc.exp reverse.out)))
