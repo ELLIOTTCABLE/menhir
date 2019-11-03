@@ -35,4 +35,3 @@ let () =
     printf "ocamlyacc is %.1f times faster than the table back-end.\n" ((table -. dry) /. (ocamlyacc -. dry));
   );
   flush stdout
-

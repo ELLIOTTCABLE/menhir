@@ -1,0 +1,7 @@
+(include ../dune.gene)
+
+(menhir
+ (modules parser))
+
+(executable
+ (name gene))

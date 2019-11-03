@@ -12,33 +12,10 @@ else
   TIME=time
 fi
 
-# Testing ocamlyacc is optional.
 test_ocamlyacc=true
-
-# Make sure Menhir and MenhirLib are up-to-date.
-./build.sh || exit 1
 
 # Remove any stale performance measurements.
 rm -f gene/*.time
-
-# Build the parser with the code back-end.
-# Do not link MenhirLib.
-echo "Building (code)..."
-make -C $GENE MENHIR="$MENHIR" clean all >/dev/null || exit 1
-cp -RH $GENE/gene.native $GENE/gene.code
-
-# Build the parser with the table back-end.
-# Do link MenhirLib.
-echo "Building (table)..."
-make -C $GENE MENHIR="$MENHIR --table" TAGS="-tags 'package(menhirLib)'" clean all >/dev/null || exit 1
-cp -RH $GENE/gene.native $GENE/gene.table
-
-# (Optionally) Build the parser with ocamlyacc.
-if $test_ocamlyacc; then
-  echo "Building (ocamlyacc)..."
-  make -C $GENE OCAMLBUILD="ocamlbuild -use-ocamlfind" clean all >/dev/null || exit 1
-  cp -RH $GENE/gene.native $GENE/gene.ocamlyacc
-fi
 
 # A loop with several test sizes.
 
@@ -47,17 +24,17 @@ for size in 1000000 5000000 10000000 ; do
 
   # Dry run (measures the random generation time).
   echo Dry run:
-  $TIME -f "%U" $GENE/gene.code --size $size --dry-run 2> $GENE/dry.time
+  $TIME -f "%U" $GENE/code/gene.exe --size $size --dry-run 2> $GENE/dry.time
   cat $GENE/dry.time
 
   # Run the code back-end.
   echo Code back-end:
-  $TIME -f "%U" $GENE/gene.code --size $size > $GENE/code.out 2> $GENE/code.time
+  $TIME -f "%U" $GENE/code/gene.exe --size $size > $GENE/code.out 2> $GENE/code.time
   cat $GENE/code.time
 
   # Run the table back-end.
   echo Table back-end:
-  $TIME -f "%U" $GENE/gene.table --size $size > $GENE/table.out 2> $GENE/table.time
+  $TIME -f "%U" $GENE/table/gene.exe --size $size > $GENE/table.out 2> $GENE/table.time
   cat $GENE/table.time
 
   # Avoid a gross mistake.
@@ -74,7 +51,7 @@ for size in 1000000 5000000 10000000 ; do
 
   if $test_ocamlyacc; then
     echo ocamlyacc:
-    $TIME -f "%U" $GENE/gene.ocamlyacc --size $size > $GENE/ocamlyacc.out 2> $GENE/ocamlyacc.time
+    $TIME -f "%U" $GENE/ocamlyacc/gene.exe --size $size > $GENE/ocamlyacc.out 2> $GENE/ocamlyacc.time
     cat $GENE/ocamlyacc.time
   fi
 
@@ -82,4 +59,3 @@ for size in 1000000 5000000 10000000 ; do
   ocaml speed.ml
 
 done
-

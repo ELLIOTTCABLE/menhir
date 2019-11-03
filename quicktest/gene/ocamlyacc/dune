@@ -1,0 +1,6 @@
+(include ../dune.gene)
+
+(ocamlyacc parser)
+
+(executable
+ (name gene))
