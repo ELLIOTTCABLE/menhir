@@ -13,6 +13,10 @@
 
 open Grammar
 
+(* If [debug] is set, check assertions. *)
+
+val debug: bool
+
 (* This is the core of the reachability analysis. After the automaton has been
    constructed, this (expensive) analysis determines exactly under which
    conditions each nonterminal edge in the automaton can be taken. This

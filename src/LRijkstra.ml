@@ -32,9 +32,15 @@
 x   removes some (shift or reduce) actions, hence may suppress the shortest
    path. *)
 
-(* NOTE: THIS FILE IS COMPILED WITH -noassert BY DEFAULT. If you would like
-   the assertions to be tested at runtime, change that in the file _tags.
-   The performance impact of the assertions is about 10%. *)
+(* NOTE: THIS FILE IS SUPPOSED TO BE COMPILED WITH -noassert BY DEFAULT. As this
+   is not yet supported by Dune the flag below is used to control the assertions
+   manually. If you would like the assertions to be tested at runtime, change
+   this flag to [true].  The performance impact of the assertions is about
+   10%. *)
+
+(* If [debug] is set, check assertions. *)
+
+let debug = LRijkstraCore.debug
 
 (* ------------------------------------------------------------------------ *)
 
@@ -154,7 +160,7 @@ module A = Astar.Make(struct
 
   (* The successors of [s, z] are defined as follows. *)
   let successors (s, z) edge =
-    assert (Terminal.real z);
+    if debug then assert (Terminal.real z);
     (* For every transition out of [s], labeled [sym], leading to [s']... *)
     Lr1.transitions s |> SymbolMap.iter (fun sym s' ->
       match sym with
