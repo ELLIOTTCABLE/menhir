@@ -6,3 +6,14 @@
   ))
   (libraries menhirSdk)
 )
+
+(copy_files ../../test/good/parser_raw.mly)
+
+(rule
+ (target parser_raw.cmly)
+ (deps parser_raw.mly)
+ (action (run menhir --cmly %{deps})))
+
+(rule
+ (alias test)
+ (action (ignore-stdout (run ./generate.exe %{dep:parser_raw.cmly}))))
