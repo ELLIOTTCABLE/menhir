@@ -1,0 +1,6 @@
+(copy_files# ../*.ml)
+
+(copy_files ../lexer.mll)
+(copy_files ../parser.mly)
+
+(ocamllex lexer)

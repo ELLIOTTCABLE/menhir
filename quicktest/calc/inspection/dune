@@ -1,0 +1,9 @@
+(include ../dune.calc)
+
+(menhir
+ (flags --trace --table --inspection)
+ (modules parser))
+
+(executable
+ (name calc)
+ (libraries menhirLib))

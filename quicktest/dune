@@ -1,0 +1,18 @@
+(data_only_dirs calc-data)
+
+(alias
+ (name default))
+
+(executable
+ (name test))
+
+(rule
+ (target dune.inc.gen)
+ (deps (source_tree calc-data))
+ (action (with-stdout-to %{target} (run ./test.exe))))
+
+(include dune.inc)
+
+(rule
+ (alias gen)
+ (action (diff dune.inc dune.inc.gen)))

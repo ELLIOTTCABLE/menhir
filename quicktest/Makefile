@@ -1,11 +1,16 @@
-SHELL := /bin/bash
+DUNEBUILD := dune build --no-print-directory
 
-.PHONY: test clean
+.PHONY: test speed trustme
 
 test:
-	@ ./test.sh
+	@ $(DUNEBUILD) --display short @@test
 
-clean:
-	cd calc-data && rm -f `cat .gitignore`
-	make -C calc clean
-	make -C gene clean realclean
+gen:
+	@ echo > dune.inc
+	@ $(DUNEBUILD) @gen --auto-promote || :
+
+speed:
+	@ $(DUNEBUILD) --force --no-buffer @speed
+
+trustme:
+	@ $(DUNEBUILD) @@test --auto-promote
