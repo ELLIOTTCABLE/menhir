@@ -1,0 +1,42 @@
+;; To avoid repeating flags in each Menhir invocation, they are set in the file
+;; "menhir_flags". However, we need these flags in "s-expression" format in
+;; order to use them in the "menhir" stanza below. The following rule generates
+;; a file in this format by wrapping the list of arguments in parentheses.
+
+(rule
+ (with-stdout-to menhir_flags.sexp
+                 (progn (echo "(")
+                        (cat %{dep:menhir_flags})
+                        (echo ")"))))
+
+;; Generate the Menhir parser using an existing Menhir binary. The stage1
+;; version is used when building the stage2 version, or the stage2 version
+;; itself when building the stage3 version.
+
+(menhir
+ (flags (:include menhir_flags.sexp) -v)
+ (modules parser))
+
+;; Generates the module [ParserMessages] from the "parserMesseges.messages" file
+;; maintained by the developer.
+
+(rule
+ (with-stdout-to parserMessages.ml
+                 (run menhir
+                      %{read-lines:menhir_flags} %{dep:parser.mly}
+                      --compile-errors %{dep:parserMessages.messages})))
+
+;; As dune cannot use the same module in two different libraries/executables, we
+;; need to copy the source files to the present directory.
+
+(copy_files# ../*.{ml,mli})
+
+;; The stage2/3 version of Menhir. The stanza is identical to that used for the
+;; stage1 version, but the [Driver] and [Parser] modules are different.
+;; Installation is handled specially (see the "dune" file).
+
+(executable
+ (name main)
+ (libraries menhirLib menhirSdk unix)
+ (flags -open MenhirSdk)
+ (modules_without_implementation IL stretch lookahead))

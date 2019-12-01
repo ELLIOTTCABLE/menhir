@@ -1,0 +1,10 @@
+-lg
+1
+-la
+1
+-lc
+1
+--canonical
+--table
+--strict
+--fixed-exception
